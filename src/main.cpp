@@ -29,8 +29,23 @@ static inline string default_format_token(const string &tok) {
         // assume already comma-separated w/o spaces per problem spec
         return tok;
     }
-    // If looks like integer, keep as-is (no leading zeros normalization)
-    if (is_integer_token(tok) || is_uinteger_token(tok)) return tok;
+    // If looks like integer, normalize canonical decimal
+    if (is_integer_token(tok)) {
+        try {
+            long long v = stoll(tok);
+            return to_string(v);
+        } catch (...) {
+            return tok;
+        }
+    }
+    if (is_uinteger_token(tok)) {
+        try {
+            unsigned long long v = stoull(tok);
+            return to_string(v);
+        } catch (...) {
+            return tok;
+        }
+    }
     // Treat otherwise as string
     return tok;
 }
@@ -120,13 +135,74 @@ int main() {
             firstOutput = false;
             continue;
         }
-        // Count specifiers (exclude "%%")
+        // If line is a pure integer, treat it as number of cases
+        auto trim = [](const string &s){
+            size_t i=0; while (i<s.size() && isspace((unsigned char)s[i])) ++i;
+            size_t j=s.size(); while (j>i && isspace((unsigned char)s[j-1])) --j;
+            return s.substr(i, j-i);
+        };
+        string tline = trim(fmt);
+        bool all_digits = !tline.empty() && all_of(tline.begin(), tline.end(), [](unsigned char ch){return isdigit(ch);} );
+        if (all_digits) {
+            int T = stoi(tline);
+            for (int c=0; c<T; ++c) {
+                string fl;
+                // read next non-empty format line
+                while (true) {
+                    if (!getline(cin, fl)) { fl.clear(); break; }
+                    if (!fl.empty()) break;
+                }
+                if (fl.empty()) break;
+                // process this case as below
+                // Count recognized specifiers (exclude "%%")
+                size_t need2 = 0;
+                for (size_t i=0; i<fl.size(); ++i) {
+                    if (fl[i]=='%') {
+                        if (i+1<fl.size()) {
+                            char sp = fl[i+1];
+                            if (sp=='%') { ++i; continue; }
+                            if (sp=='s' || sp=='d' || sp=='u' || sp=='_') ++need2;
+                            ++i;
+                        }
+                    }
+                }
+                deque<string> args2;
+                string tok2;
+                auto read_token2 = [&]() -> bool {
+                    tok2.clear();
+                    int ch;
+                    while ((ch = cin.peek()) != EOF && isspace(ch)) cin.get();
+                    if (ch == EOF) return false;
+                    if (ch == '"') {
+                        cin.get();
+                        while ((ch = cin.get()) != EOF) {
+                            if (ch == '"') break;
+                            tok2.push_back(static_cast<char>(ch));
+                        }
+                        return true;
+                    }
+                    while ((ch = cin.peek()) != EOF && !isspace(ch)) tok2.push_back(static_cast<char>(cin.get()));
+                    return !tok2.empty();
+                };
+                while (args2.size() < need2 && read_token2()) args2.push_back(tok2);
+                string dummy2; getline(cin, dummy2);
+                string res2 = format_once(fl, args2);
+                if (!firstOutput) cout << '\n';
+                cout << res2;
+                firstOutput = false;
+            }
+            continue; // go read next block
+        }
+        // Count specifiers (exclude "%%") for single case line
         size_t need = 0;
         for (size_t i=0; i<fmt.size(); ++i) {
             if (fmt[i]=='%') {
                 if (i+1<fmt.size() && fmt[i+1]=='%') { ++i; continue; }
                 // count only s, d, u, _
-                ++need;
+                if (i+1<fmt.size()) {
+                    char sp = fmt[i+1];
+                    if (sp=='s' || sp=='d' || sp=='u' || sp=='_') ++need;
+                }
                 ++i; // skip next char if any
             }
         }
