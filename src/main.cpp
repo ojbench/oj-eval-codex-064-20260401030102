@@ -93,8 +93,13 @@ static inline string format_once(const string &fmt, deque<string> &args) {
                         unsigned long long v = stoull(tok);
                         out += to_string(v);
                     } catch (...) {
-                        // if negative provided, cast behavior similar to C? keep token
-                        out += tok;
+                        try {
+                            long long sv = stoll(tok);
+                            unsigned long long v = static_cast<unsigned long long>(sv);
+                            out += to_string(v);
+                        } catch (...) {
+                            out += tok;
+                        }
                     }
                     } break;
                 case '_': {
