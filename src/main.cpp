@@ -130,10 +130,36 @@ int main() {
                 ++i; // skip next char if any
             }
         }
-        // Read tokens until we have 'need' tokens
+        // Read tokens until we have 'need' tokens.
+        // Support quoted strings with spaces: tokens may be
+        // - bare: no spaces, separated by whitespace
+        // - quoted with "..." allowing spaces; quotes are stripped
         deque<string> args;
         string tok;
-        while (args.size() < need && (cin >> tok)) {
+        auto read_token = [&]() -> bool {
+            tok.clear();
+            int ch;
+            // skip leading spaces and newlines
+            while ((ch = cin.peek()) != EOF && isspace(ch)) {
+                cin.get();
+            }
+            if (ch == EOF) return false;
+            if (ch == '"') {
+                cin.get(); // consume opening quote
+                // read until closing quote
+                while ((ch = cin.get()) != EOF) {
+                    if (ch == '"') break;
+                    tok.push_back(static_cast<char>(ch));
+                }
+                return true;
+            }
+            // read until next whitespace
+            while ((ch = cin.peek()) != EOF && !isspace(ch)) {
+                tok.push_back(static_cast<char>(cin.get()));
+            }
+            return !tok.empty();
+        };
+        while (args.size() < need && read_token()) {
             args.push_back(tok);
         }
         // consume rest of the line after tokens to newline
