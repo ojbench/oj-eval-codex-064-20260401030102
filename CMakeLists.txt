@@ -12,6 +12,4 @@ endif()
 
 add_executable(code src/main.cpp)
 
-target_compile_options(code PRIVATE -O2 -pipe -static -s)
-# Static linking may fail on some systems; try to reduce if unavailable
-# Users can adjust if needed.
+target_compile_options(code PRIVATE -O2 -pipe -s)
